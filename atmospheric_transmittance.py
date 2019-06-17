@@ -87,12 +87,11 @@ def get(airmass=1.0, pwv_mode='pwv', season=0, time=0, pwv=3.5, msolflux=130.0,
     incl_therm: str
         Flag for inclusion of instrumental thermal radiation.
         options: ['Y', 'N'] (default is 'N')
-        Note:
-        Instrumental Thermal Emission. This radiance component represents
-        an instrumental effect. The emission is provided relative to the
-        other model components. To obtain the correct absolute flux, an
-        instrumental response curve must be applied to the resulting
-        model spectrum. See section 6.2.4 in the SkyCalc documentation at
+        Note: This radiance component represents an instrumental effect.
+        The emission is provided relative to the other model components.
+        To obtain the correct absolute flux, an instrumental response curve
+        must be applied to the resulting model spectrum.
+        See section 6.2.4 in the SkyCalc documentation at
         http://localhost/observing/etc/doc/skycalc/
         The_Cerro_Paranal_Advanced_Sky_Model.pdf
     therm_t1, therm_t2, therm_t3 : float
@@ -179,6 +178,7 @@ def get(airmass=1.0, pwv_mode='pwv', season=0, time=0, pwv=3.5, msolflux=130.0,
     else:
         print('HTML request failed', results)
 
+    # Create a temporary file to write the binary results to
     tmp_data_file = './tmp_skycalc_data.fits'
 
     with open(tmp_data_file, 'wb') as f:
