@@ -1,9 +1,17 @@
 import os
 import json
 import requests
+import urllib.error as ue
 
 import astropy.units as u
 from astropy.io import fits
+
+
+class ParameterError(Exception):
+    """ Raises an error when one of the parameters isn't accepted by
+    the SkyCalc Sky Model Calculator.
+    """
+    pass
 
 
 def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
@@ -81,7 +89,6 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
     ecl_lat: float
         Ecliptic latitude in degree range [-90.0,90.0].
         (default is 90.0)
-
     incl_loweratm: str
         Flag for inclusion of molecular emission of lower atmosphere.
         options: ['Y', 'N'] (default is 'Y')
@@ -91,7 +98,6 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
     incl_airglow: str
         Flag for inclusion of airglow continuum (residual continuum)
         options: ['Y', 'N'] (default is 'Y')
-
     incl_therm: str
         Flag for inclusion of instrumental thermal radiation.
         options: ['Y', 'N'] (default is 'N')
@@ -106,7 +112,6 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
         Temperature in K (default is 0.0)
     therm_e1, therm_e2, therm_e3: float
         In range [0,1] (default is 0.0)
-
     vacair: str
         In regards to the wavelength grid.
         options: ['vac', 'air] (default is 'vac')
@@ -130,7 +135,6 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
         In range [0,1.0e6] (default is 20000)
     wgrid_user: list of floats
         default is [500.0, 510.0, 520.0, 530.0, 540.0, 550.0]
-
     lsf_type: str
         Line spread function type for convolution.
         options: ['none','Gaussian','Boxcar'] (default is 'none')
@@ -184,7 +188,9 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
         except requests.exceptions.RequestException as e:
             print(e, 'could not retrieve FITS data from server')
     else:
-        print('HTML request failed', results)
+        raise ParameterError('HTML request failed. A custom parameter you ' +
+                             'set is most likely not accepted by the SkyCalc' +
+                             ' Calculator. json.loads() returns: ', results)
 
     # Create a temporary file to write the binary results to
     tmp_data_file = './tmp_skycalc_data.fits'
