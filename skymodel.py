@@ -7,7 +7,7 @@ import astropy.units as u
 from astropy.io import fits
 
 
-class ParameterError(Exception):
+class SkyCalcError(Exception):
     """ Raises an error when one of the parameters isn't accepted by
     the SkyCalc Sky Model Calculator.
     """
@@ -188,9 +188,9 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
         except requests.exceptions.RequestException as e:
             print(e, 'could not retrieve FITS data from server')
     else:
-        raise ParameterError('HTML request failed. A custom parameter you ' +
+        raise SkyCalcError('HTML request failed. A custom parameter you ' +
                              'set is most likely not accepted by the SkyCalc' +
-                             ' Calculator. json.loads() returns: ', results)
+                             ' Calculator. json.loads() returns: {}'.format(results))
 
     # Create a temporary file to write the binary results to
     tmp_data_file = './tmp_skycalc_data.fits'
