@@ -1,7 +1,8 @@
 import numpy as np
+import astropy.units as u
 
 
-def snr(count, t=None, npix=1, sky=0, darkcurrent=0, readnoise=0,
+def snr(count, t=None, npix=1, background=0, darkcurrent=0, readnoise=0,
         gain=0, nb=np.inf, ADerr=0.289):
     """ A function to calculate the signal to noise ratio (SNR) of an
     astronomical observation.
@@ -17,7 +18,7 @@ def snr(count, t=None, npix=1, sky=0, darkcurrent=0, readnoise=0,
         Photons per second of the observation. Default is None.
     npix (int)
         Number of pixels under consideration for the signal. Default is 1.
-    sky (int)
+    background (int)
         Photons per pixel due to the backround/sky. Default is 0.
     darkcurrent (int)
         Electrons per pixel due to the dark current. Default is 0.
@@ -45,11 +46,31 @@ def snr(count, t=None, npix=1, sky=0, darkcurrent=0, readnoise=0,
     if t:
         # calculate the SNR in a given exposure time t
         signal *= t
-        sky *= t
+        background *= t
         darkcurrent *= t
 
     return signal / np.sqrt(signal + npix *
                             (1 + npix / nb) *
-                            (sky + darkcurrent + readnoise ** 2 +
+                            (background + darkcurrent + readnoise ** 2 +
                              (gain * ADerr) ** 2)
                             )
+
+
+def howell_test():
+    """ A test based on the worked example in "A Handbook to CCD Astronomy",
+    Steven Howell, 2000, pg. 56
+    """
+    t = 300
+    readnoise = 5
+    darkcurrent = 22
+    gain = 5
+    nb = 200
+    background = 620
+    npix = 1
+    count = 24013
+
+    answer = 342  # the value of the answer given in the text
+
+    assert int(snr(count * gain, npix=npix, background=background * gain,
+               darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
+               gain=gain, nb=nb)) == 342
