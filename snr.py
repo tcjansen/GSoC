@@ -73,4 +73,26 @@ def howell_test():
 
     assert int(snr(count * gain, npix=npix, background=background * gain,
                darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
-               gain=gain, nb=nb)) == 342
+               gain=gain, nb=nb)) == answer
+
+
+def units_test():
+    """ A test based on the worked example in "A Handbook to CCD Astronomy",
+    Steven Howell, 2000, pg. 56
+    """
+    t = 300 * u.s
+    readnoise = 5 * u.electrons
+    darkcurrent = 22 * u.electron / u.pixel / u.hr
+    darkcurrent = (darkcurrent * t).to(u.electron / u.pixel)
+    gain = 5 * u.electron / u.adu
+    nb = 200 * u.pixel
+    background = 620 * u.adu / u.pixel
+    npix = 1 * u.pixel
+    count = 24013 * u.adu
+
+    # the value of the answer given in the text
+    answer = 342 * np.sqrt(1 * u.electron)
+
+    assert int(snr(count * gain, npix=npix, background=background * gain,
+               darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
+               gain=gain, nb=nb)) == answer
