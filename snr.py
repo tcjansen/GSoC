@@ -39,34 +39,33 @@ def snr(count, t=None, npix=1, nb=np.inf, background=0, darkcurrent=0,
     float
     The signal to noise ratio of the given observation in sqrt(e-).
     """
-    # convert arguments to quantities if not already of that type
     args = locals()  # maps arguments into a dictionary
 
+    # convert arguments to quantities if not already of that type
     for arg in args:
         if type(args[arg]) != u.quantity.Quantity \
            and args[arg] is not None:
             args[arg] = args[arg] * get_unit(arg)
 
+    # calculate the SNR in a given exposure time t
     if t:
-        # calculate the SNR in a given exposure time t
-        args['count'] = args['count'] * args['t']
-        args['background'] *= args['background'] * args['t']
-        args['darkcurrent'] *= args['darkcurrent'] * args['t']
+        for arg in ['count', 'background', 'darkcurrent']:
+            args[arg] = args[arg] * args['t']
 
-    readnoise = args['readnoise'].value ** 2 * \
-        np.sqrt(1 * u.electron / u.pixel)
-    gain_err = (args['gain'] * args['ADerr']).value ** 2 * \
-        np.sqrt(1 * u.electron / u.pixel)
+    readnoise = get_shotnoise(args['readnoise'])
+    gain_err = get_shotnoise((args['gain'] * args['ADerr']))
 
-    return args['count'] / np.sqrt(args['count'] + args['npix'] *
-                                   (1 + args['npix'] / args['nb']) *
-                                   (args['background'] + args['darkcurrent'] +
-                                    readnoise ** 2 +
-                                    gain_err ** 2)
-                                   )
+    pixel_terms = args['npix'] * (1 + args['npix'] / args['nb'])
+    detector_noise = args['background'] + args['darkcurrent'] + \
+        readnoise ** 2 + gain_err ** 2
+
+    return args['count'] / np.sqrt(args['count'] +
+                                   pixel_terms * detector_noise)
 
 
 def get_unit(arg):
+    """ Converts int/float arguments into quantities with associated units.
+    """
     if arg == 'count':
         return u.electron
     elif arg == 't':
@@ -81,21 +80,30 @@ def get_unit(arg):
         return u.adu / u.pixel
 
 
-def howell_test():
-    """ A test based on the worked example in "A Handbook to CCD Astronomy",
-    Steven Howell, 2000, pg. 56
+def get_shotnoise(arg):
+    """ Returns the shot noise (i.e. non-Poissonion noise) in the correct
+    units.
+    """
+    return arg.value ** 2 * np.sqrt(1 * u.electron / u.pixel)
+
+
+def test_units():
+    """ A test to check that snr() returns a quantity given
+    non-quantity arguments.
+    Based on the worked example in "A Handbook to CCD Astronomy",
+    Steven Howell, 2000, pg. 56-57
     """
     t = 300
     readnoise = 5
-    darkcurrent = 22
+    darkcurrent = 22 * t / 60 / 60
     gain = 5
     nb = 200
-    background = 620
+    background = 620 * gain
     npix = 1
-    count = 24013
+    count = 24013 * gain
 
-    result = snr(count * gain, npix=npix, background=background * gain,
-                 darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
+    result = snr(count, npix=npix, background=background,
+                 darkcurrent=darkcurrent, readnoise=readnoise,
                  gain=gain, nb=nb)
 
     # the value of the answer given in the text
@@ -105,9 +113,10 @@ def howell_test():
     assert abs(result - answer) < np.sqrt(1 * u.electron)
 
 
-def units_test():
-    """ A test based on the worked example in "A Handbook to CCD Astronomy",
-    Steven Howell, 2000, pg. 56
+def test_math():
+    """ A test to check that the math in snr() is done correctly.
+    Based on the worked example in "A Handbook to CCD Astronomy",
+    Steven Howell, 2000, pg. 56-57
     """
     t = 300 * u.s
     readnoise = 5 * u.electron
@@ -115,14 +124,15 @@ def units_test():
     darkcurrent = (darkcurrent * t).to(u.electron / u.pixel)
     gain = 5 * u.electron / u.adu
     nb = 200 * u.pixel
-    background = 620 * u.adu / u.pixel
+    background = 620 * u.adu / u.pixel * gain
     npix = 1 * u.pixel
-    count = 24013 * u.adu
+    count = 24013 * u.adu * gain
 
-    # the value of the answer given in the text
-    result = snr(count * gain, npix=npix, background=background * gain,
+    result = snr(count, npix=npix, background=background,
                  darkcurrent=darkcurrent, readnoise=readnoise,
                  gain=gain, nb=nb)
+
+    # the value of the answer given in the text
     answer = 342 * np.sqrt(1 * u.electron)
 
     # allow error to be within 1 sigma for this test
