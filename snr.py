@@ -2,8 +2,8 @@ import numpy as np
 import astropy.units as u
 
 
-def snr(count, t=None, npix=1, background=0, darkcurrent=0, readnoise=0,
-        gain=0, nb=np.inf, ADerr=0.289):
+def snr(count, t=None, npix=1, nb=np.inf, background=0, darkcurrent=0,
+        readnoise=0, gain=0, ADerr=0.289):
     """ A function to calculate the signal to noise ratio (SNR) of an
     astronomical observation.
 
@@ -14,21 +14,19 @@ def snr(count, t=None, npix=1, background=0, darkcurrent=0, readnoise=0,
         count is assumed to be the countrate.
     t (float)
         Exposure time of the observation. Default is None.
-    countrate (float or int)
-        Photons per second of the observation. Default is None.
     npix (int)
         Number of pixels under consideration for the signal. Default is 1.
+    nb (int)
+        Number of pixels used in the background estimation. Default
+        is set to infinite such that there is no contribution of
+        error due to background estimation. This assumes that the
+        nb will be >> npix.
     background (int)
         Photons per pixel due to the backround/sky. Default is 0.
     darkcurrent (int)
         Electrons per pixel due to the dark current. Default is 0.
     readnoise (int)
         Electrons per pixel from the read noise. Default is 0.
-    nb (int)
-        Number of pixels used in the background estimation. Default
-        is set to infinite such that there is no contribution of
-        error due to background estimation. This assumes that the
-        nb will be >> npix.
     gain (int)
         Gain of the CCD in electrions/ADU. Default is 0 such that the
         contribution to the error due to the gain is assumed to be small.
@@ -39,21 +37,48 @@ def snr(count, t=None, npix=1, background=0, darkcurrent=0, readnoise=0,
     Returns
     -------
     float
-    The signal to noise ratio of the given observation.
+    The signal to noise ratio of the given observation in sqrt(e-).
     """
-    signal = count
+    # convert arguments to quantities if not already of that type
+    args = locals()  # maps arguments into a dictionary
+
+    for arg in args:
+        if type(args[arg]) != u.quantity.Quantity \
+           and args[arg] is not None:
+            args[arg] = args[arg] * get_unit(arg)
 
     if t:
         # calculate the SNR in a given exposure time t
-        signal *= t
-        background *= t
-        darkcurrent *= t
+        args['count'] = args['count'] * args['t']
+        args['background'] *= args['background'] * args['t']
+        args['darkcurrent'] *= args['darkcurrent'] * args['t']
 
-    return signal / np.sqrt(signal + npix *
-                            (1 + npix / nb) *
-                            (background + darkcurrent + readnoise ** 2 +
-                             (gain * ADerr) ** 2)
-                            )
+    readnoise = args['readnoise'].value ** 2 * \
+        np.sqrt(1 * u.electron / u.pixel)
+    gain_err = (args['gain'] * args['ADerr']).value ** 2 * \
+        np.sqrt(1 * u.electron / u.pixel)
+
+    return args['count'] / np.sqrt(args['count'] + args['npix'] *
+                                   (1 + args['npix'] / args['nb']) *
+                                   (args['background'] + args['darkcurrent'] +
+                                    readnoise ** 2 +
+                                    gain_err ** 2)
+                                   )
+
+
+def get_unit(arg):
+    if arg == 'count':
+        return u.electron
+    elif arg == 't':
+        return u.s
+    elif arg in ['npix', 'nb']:
+        return u.pixel
+    elif arg in ['background', 'darkcurrent', 'readnoise']:
+        return u.electron / u.pixel
+    elif arg == 'gain':
+        return u.electron / u.adu
+    elif arg == 'ADerr':
+        return u.adu / u.pixel
 
 
 def howell_test():
@@ -69,11 +94,15 @@ def howell_test():
     npix = 1
     count = 24013
 
-    answer = 342  # the value of the answer given in the text
+    result = snr(count * gain, npix=npix, background=background * gain,
+                 darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
+                 gain=gain, nb=nb)
 
-    assert int(snr(count * gain, npix=npix, background=background * gain,
-               darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
-               gain=gain, nb=nb)) == answer
+    # the value of the answer given in the text
+    answer = 342 * np.sqrt(1 * u.electron)
+
+    # allow error to be within 1 sigma for this test
+    assert abs(result - answer) < np.sqrt(1 * u.electron)
 
 
 def units_test():
@@ -81,7 +110,7 @@ def units_test():
     Steven Howell, 2000, pg. 56
     """
     t = 300 * u.s
-    readnoise = 5 * u.electrons
+    readnoise = 5 * u.electron
     darkcurrent = 22 * u.electron / u.pixel / u.hr
     darkcurrent = (darkcurrent * t).to(u.electron / u.pixel)
     gain = 5 * u.electron / u.adu
@@ -91,8 +120,10 @@ def units_test():
     count = 24013 * u.adu
 
     # the value of the answer given in the text
+    result = snr(count * gain, npix=npix, background=background * gain,
+                 darkcurrent=darkcurrent, readnoise=readnoise,
+                 gain=gain, nb=nb)
     answer = 342 * np.sqrt(1 * u.electron)
 
-    assert int(snr(count * gain, npix=npix, background=background * gain,
-               darkcurrent=darkcurrent * t / 60 / 60, readnoise=readnoise,
-               gain=gain, nb=nb)) == answer
+    # allow error to be within 1 sigma for this test
+    assert abs(result - answer) < np.sqrt(1 * u.electron)
