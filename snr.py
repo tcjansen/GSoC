@@ -126,3 +126,14 @@ def test_math():
 
     # allow error to be within 1 sigma for this test
     assert abs(result - answer) < np.sqrt(1 * u.electron)
+
+
+def test_bright():
+    """ Test that snr() returns sqrt(counts), the expected value
+    for a bright target.
+    """
+    counts = 25e5
+    answer = np.sqrt(counts * u.electron)
+    result = snr(counts)
+    difference_threshold = 1e-3 * np.sqrt(1 * u.electron)
+    assert abs(result - answer) < difference_threshold
