@@ -1,5 +1,6 @@
 import numpy as np
 import astropy.units as u
+from astropy.tests.helper import assert_quantity_allclose
 
 
 @u.quantity_input(counts=u.electron,
@@ -106,8 +107,8 @@ def test_math():
     # the value of the answer given in the text
     answer = 342 * np.sqrt(1 * u.electron)
 
-    # allow error to be within 1 sigma for this test
-    assert abs(result - answer) < np.sqrt(1 * u.electron)
+    # allow error to be +/- 1 for this test
+    assert_quantity_allclose(result, answer, rtol=1 / 342)
 
 
 def test_bright():
@@ -116,7 +117,7 @@ def test_bright():
     for a bright target.
     """
     counts = 25e5 * u.electron
-    answer = np.sqrt(counts)
     result = snr(counts)
-    difference_threshold = 1e-3 * np.sqrt(1 * u.electron)
-    assert abs(result - answer) < difference_threshold
+    answer = np.sqrt(counts)
+
+    assert_quantity_allclose(result, answer, rtol=1e-4)
