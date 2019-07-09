@@ -1,6 +1,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.tests.helper import assert_quantity_allclose
+from scipy.optimize import fsolve
 
 
 @u.quantity_input(counts=u.electron,
@@ -84,6 +85,23 @@ def get_shotnoise(detector_property):
     return detector_property.value * np.sqrt(1 * u.electron / u.pixel)
 
 
+def t_with_small_errs(t, background, darkcurrent, gain_err, readnoise,
+                      countrate, npix, n_background):
+    """
+    Returns the full expression for the exposure time including the
+    contribution to the noise from the background and the gain.
+    """
+    if type(t) != 'astropy.units.quantity.Quantity':
+        t = t * u.s
+
+    detector_noise = (background * t + darkcurrent * t +
+                      gain_err ** 2 + readnoise ** 2)
+    radicand = countrate * t + (npix * (1 + npix/n_background) *
+                                detector_noise)
+
+    return countrate * t / np.sqrt(radicand)
+
+
 @u.quantity_input(snr=np.sqrt(1 * u.electron),
                   countrate=u.electron / u.s,
                   npix=u.pixel,
@@ -153,18 +171,20 @@ def exposure_time_from_snr(snr, countrate,
     readnoise = get_shotnoise(readnoise)
     gain_err = get_shotnoise(gain * ad_err)
 
-    # how to define the moment when the smaller error terms become
-    # non-negligible?
+    # solve t with the quadratic equation (pg. 57 of Howell 2000)
+    A = countrate ** 2
+    B = (-1) * snr ** 2 * (countrate + npix * (background + darkcurrent))
+    C = (-1) * snr ** 2 * npix * readnoise ** 2
+
+    t = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+
     if gain_err.value > 1 or n_background.value != np.inf:
-        t = solve_t_numerically()
-
-    else:
-        # solve t with the quadratic equation (pg. 57 of Howell 2000)
-        A = countrate ** 2
-        B = (-1) * snr ** 2 * (countrate + npix * (background + darkcurrent))
-        C = (-1) * snr ** 2 * npix * readnoise ** 2
-
-        t = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+        # solve t numerically
+        t = fsolve(t_with_small_errs, t, args=(background, darkcurrent,
+                                               gain_err, readnoise, countrate,
+                                               npix, n_background))
+        if type(t) != 'astropy.units.quantity.Quantity':
+            t = t * u.s
 
     return t
 
@@ -233,14 +253,13 @@ def test_t_exp_numeric():
                                     readnoise=readnoise, gain=gain)
     answer = t
 
-    assert_quantity_allclose(result, answer, rtol=1e-7)
+    assert_quantity_allclose(result, answer, atol=1 * u.s)
 
 
 def test_t_exp_analytic():
     """
     A test to check that the analytic method in exposure_time_from_snr() is
-    done correctly. Based on the worked example in "A Handbook to
-    CCD Astronomy", Steven Howell, 2000, pg. 56-57
+    done correctly.
     """
     snr_set = 50 * np.sqrt(1 * u.electron)
     countrate = 1000 * u.electron / u.s
@@ -254,11 +273,13 @@ def test_t_exp_analytic():
                                background=background_rate,
                                darkcurrent=darkcurrent_rate,
                                readnoise=readnoise)
+
+    # if t is correct, snr() should return snr_set:
     snr_calc = snr(countrate * t,
-        npix=npix,
-        background=background_rate * t,
-        darkcurrent=darkcurrent_rate * t,
-        readnoise=readnoise)
+                   npix=npix,
+                   background=background_rate * t,
+                   darkcurrent=darkcurrent_rate * t,
+                   readnoise=readnoise)
 
     assert_quantity_allclose(snr_calc, snr_set,
                              atol=0.5 * np.sqrt(1 * u.electron))
