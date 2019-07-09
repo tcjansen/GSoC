@@ -82,6 +82,8 @@ def get_shotnoise(detector_property):
     Returns the shot noise (i.e. non-Poissonion noise) in the correct
     units.
     """
+    # Ensure detector_property is in the correct units:
+    detector_property = detector_property.to(u.electron / u.pixel)
     return detector_property.value * np.sqrt(1 * u.electron / u.pixel)
 
 
@@ -91,7 +93,7 @@ def t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
     Returns the full expression for the exposure time including the
     contribution to the noise from the background and the gain.
     """
-    if type(t) != 'astropy.units.quantity.Quantity':
+    if not hasattr(t, 'unit'):
         t = t * u.s
 
     detector_noise = (background_rate * t + darkcurrent_rate * t +
@@ -179,13 +181,13 @@ def exposure_time_from_snr(snr, countrate,
 
     t = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
 
-    if gain_err.value > 1 or n_background.value != np.inf:
+    if gain_err.value > 1 or not np.isfinite(n_background.value):
         # solve t numerically
         t = fsolve(t_with_small_errs, t, args=(background_rate,
                                                darkcurrent_rate,
                                                gain_err, readnoise, countrate,
                                                npix, n_background))
-        if type(t) != 'astropy.units.quantity.Quantity':
+        if not hasattr(t, 'unit'):
             t = t * u.s
 
     return t
