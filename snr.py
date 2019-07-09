@@ -12,7 +12,7 @@ from scipy.optimize import fsolve
                   readnoise=u.electron / u.pixel,
                   gain=u.electron / u.adu,
                   ad_err=u.adu / u.pixel)
-def snr(counts,
+def howell_snr(counts,
         npix=1 * u.pixel,
         n_background=np.inf * u.pixel,
         background=0 * u.electron / u.pixel,
@@ -56,7 +56,7 @@ def snr(counts,
     ad_err : `~astropy.units.Quantity`, optional
         An estimate of the 1 sigma error within the A/D converter with units of
         adu/pixel. Default is set to
-        0.289 * astropy.units.adu / astropy.units.pixel
+        sqrt(0.289) * astropy.units.adu / astropy.units.pixel
         (Merline & Howell, 1995).
 
     Returns
@@ -65,8 +65,8 @@ def snr(counts,
         The signal to noise ratio of the given observation in untis of
         sqrt(electrons).
     """
-    readnoise = get_shotnoise(readnoise)
-    gain_err = get_shotnoise(gain * ad_err)
+    readnoise = _get_shotnoise(readnoise)
+    gain_err = _get_shotnoise(gain * ad_err)
 
     pixel_terms = npix * (1 + npix / n_background)
     detector_noise = (background + darkcurrent +
@@ -77,7 +77,7 @@ def snr(counts,
     return sn
 
 
-def get_shotnoise(detector_property):
+def _get_shotnoise(detector_property):
     """
     Returns the shot noise (i.e. non-Poissonion noise) in the correct
     units.
@@ -87,7 +87,7 @@ def get_shotnoise(detector_property):
     return detector_property.value * np.sqrt(1 * u.electron / u.pixel)
 
 
-def t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
+def _t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
                       readnoise, countrate, npix, n_background):
     """
     Returns the full expression for the exposure time including the
@@ -113,14 +113,14 @@ def t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
                   readnoise=u.electron / u.pixel,
                   gain=u.electron / u.adu,
                   ad_err=u.adu / u.pixel)
-def exposure_time_from_snr(snr, countrate,
-                           npix=1 * u.pixel,
-                           n_background=np.inf * u.pixel,
-                           background_rate=0 * u.electron / u.pixel / u.s,
-                           darkcurrent_rate=0 * u.electron / u.pixel / u.s,
-                           readnoise=0 * u.electron / u.pixel,
-                           gain=1 * u.electron / u.adu,
-                           ad_err=np.sqrt(0.289) * u.adu / u.pixel):
+def exptime_from_howell_snr(snr, countrate,
+                            npix=1 * u.pixel,
+                            n_background=np.inf * u.pixel,
+                            background_rate=0 * u.electron / u.pixel / u.s,
+                            darkcurrent_rate=0 * u.electron / u.pixel / u.s,
+                            readnoise=0 * u.electron / u.pixel,
+                            gain=1 * u.electron / u.adu,
+                            ad_err=np.sqrt(0.289) * u.adu / u.pixel):
     """
     Returns the exposure time needed (in seconds) to achieve the desired
     signal to noise ratio (from "Handbook of CCD Astronomy", Steve Howell,
@@ -161,7 +161,7 @@ def exposure_time_from_snr(snr, countrate,
     ad_err : `~astropy.units.Quantity`, optional
         An estimate of the 1 sigma error within the A/D converter with units of
         adu/pixel. Default is set to
-        0.289 * astropy.units.adu / astropy.units.pixel
+        sqrt(0.289) * astropy.units.adu / astropy.units.pixel
         (Merline & Howell, 1995).
 
     Returns
@@ -170,8 +170,8 @@ def exposure_time_from_snr(snr, countrate,
         The exposure time needed (in seconds) to achieve the given signal
         to noise ratio.
     """
-    readnoise = get_shotnoise(readnoise)
-    gain_err = get_shotnoise(gain * ad_err)
+    readnoise = _get_shotnoise(readnoise)
+    gain_err = _get_shotnoise(gain * ad_err)
 
     # solve t with the quadratic equation (pg. 57 of Howell 2000)
     A = countrate ** 2
@@ -183,35 +183,34 @@ def exposure_time_from_snr(snr, countrate,
 
     if gain_err.value > 1 or not np.isfinite(n_background.value):
         # solve t numerically
-        t = fsolve(t_with_small_errs, t, args=(background_rate,
-                                               darkcurrent_rate,
-                                               gain_err, readnoise, countrate,
-                                               npix, n_background))
+        t = fsolve(_t_with_small_errs, t, args=(background_rate,
+                                                darkcurrent_rate,
+                                                gain_err, readnoise, countrate,
+                                                npix, n_background))
         if not hasattr(t, 'unit'):
             t = t * u.s
 
     return t
 
 
-def test_snr_calc():
+def test_howell_snr_calc():
     """
-    A test to check that the math in snr() is done correctly.
+    A test to check that the math in howell_snr() is done correctly.
     Based on the worked example in "A Handbook to CCD Astronomy",
     Steven Howell, 2000, pg. 56-57
     """
     t = 300 * u.s
     readnoise = 5 * u.electron / u.pixel
-    darkcurrent = 22 * u.electron / u.pixel / u.hr
-    darkcurrent = (darkcurrent * t).to(u.electron / u.pixel)
+    darkcurrent = 22 * t * u.electron / u.pixel / u.hr
     gain = 5 * u.electron / u.adu
     background = 620 * u.adu / u.pixel * gain
     n_background = 200 * u.pixel
     npix = 1 * u.pixel
     counts = 24013 * u.adu * gain
 
-    result = snr(counts, npix=npix, background=background,
-                 darkcurrent=darkcurrent, readnoise=readnoise,
-                 gain=gain, n_background=n_background)
+    result = howell_snr(counts, npix=npix, background=background,
+                        darkcurrent=darkcurrent, readnoise=readnoise,
+                        gain=gain, n_background=n_background)
 
     # the value of the answer given in the text
     answer = 342 * np.sqrt(1 * u.electron)
@@ -222,11 +221,11 @@ def test_snr_calc():
 
 def test_snr_bright_object():
     """
-    Test that snr() returns sqrt(counts), the expected value
+    Test that howell_snr() returns sqrt(counts), the expected value
     for a bright target.
     """
     counts = 25e5 * u.electron
-    result = snr(counts)
+    result = howell_snr(counts)
     answer = np.sqrt(counts)
 
     assert_quantity_allclose(result, answer, rtol=1e-7)
@@ -234,7 +233,7 @@ def test_snr_bright_object():
 
 def test_t_exp_numeric():
     """
-    A test to check that the numerical method in exposure_time_from_snr()
+    A test to check that the numerical method in exptime_from_howell_snr()
     (i.e. when the error in background noise or gain is non-negligible) is
     done correctly. Based on the worked example in "A Handbook to
     CCD Astronomy", Steven Howell, 2000, pg. 56-57
@@ -247,14 +246,13 @@ def test_t_exp_numeric():
     n_background = 200 * u.pixel
     background_rate = 620 * u.adu / u.pixel * gain / t
     darkcurrent_rate = 22 * u.electron / u.pixel / u.hr
-    darkcurrent_rate = darkcurrent_rate.to(u.electron / u.pixel / u.s)
     readnoise = 5 * u.electron / u.pixel
 
-    result = exposure_time_from_snr(snr, countrate, npix=npix,
-                                    n_background=n_background,
-                                    background_rate=background_rate,
-                                    darkcurrent_rate=darkcurrent_rate,
-                                    readnoise=readnoise, gain=gain)
+    result = exptime_from_howell_snr(snr, countrate, npix=npix,
+                                     n_background=n_background,
+                                     background_rate=background_rate,
+                                     darkcurrent_rate=darkcurrent_rate,
+                                     readnoise=readnoise, gain=gain)
     answer = t
 
     assert_quantity_allclose(result, answer, atol=1 * u.s)
@@ -262,7 +260,7 @@ def test_t_exp_numeric():
 
 def test_t_exp_analytic():
     """
-    A test to check that the analytic method in exposure_time_from_snr() is
+    A test to check that the analytic method in exptime_from_howell_snr() is
     done correctly.
     """
     snr_set = 50 * np.sqrt(1 * u.electron)
@@ -270,20 +268,19 @@ def test_t_exp_analytic():
     npix = 1 * u.pixel
     background_rate = 100 * u.electron / u.pixel / u.s
     darkcurrent_rate = 5 * u.electron / u.pixel / u.s
-    darkcurrent_rate = darkcurrent_rate.to(u.electron / u.pixel / u.s)
     readnoise = 1 * u.electron / u.pixel
 
-    t = exposure_time_from_snr(snr_set, countrate, npix=npix,
-                               background_rate=background_rate,
-                               darkcurrent_rate=darkcurrent_rate,
-                               readnoise=readnoise)
+    t = exptime_from_howell_snr(snr_set, countrate, npix=npix,
+                                background_rate=background_rate,
+                                darkcurrent_rate=darkcurrent_rate,
+                                readnoise=readnoise)
 
-    # if t is correct, snr() should return snr_set:
-    snr_calc = snr(countrate * t,
-                   npix=npix,
-                   background=background_rate * t,
-                   darkcurrent=darkcurrent_rate * t,
-                   readnoise=readnoise)
+    # if t is correct, howell_snr() should return snr_set:
+    snr_calc = howell_snr(countrate * t,
+                          npix=npix,
+                          background=background_rate * t,
+                          darkcurrent=darkcurrent_rate * t,
+                          readnoise=readnoise)
 
     assert_quantity_allclose(snr_calc, snr_set,
                              atol=0.5 * np.sqrt(1 * u.electron))
