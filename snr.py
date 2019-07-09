@@ -13,17 +13,18 @@ from scipy.optimize import fsolve
                   gain=u.electron / u.adu,
                   ad_err=u.adu / u.pixel)
 def howell_snr(counts,
-        npix=1 * u.pixel,
-        n_background=np.inf * u.pixel,
-        background=0 * u.electron / u.pixel,
-        darkcurrent=0 * u.electron / u.pixel,
-        readnoise=0 * u.electron / u.pixel,
-        gain=1 * u.electron / u.adu,
-        ad_err=np.sqrt(0.289) * u.adu / u.pixel):
+               npix=1 * u.pixel,
+               n_background=np.inf * u.pixel,
+               background=0 * u.electron / u.pixel,
+               darkcurrent=0 * u.electron / u.pixel,
+               readnoise=0 * u.electron / u.pixel,
+               gain=1 * u.electron / u.adu,
+               ad_err=np.sqrt(0.289) * u.adu / u.pixel):
     """
-    A function to calculate the signal to noise ratio (SNR) of an
-    astronomical observation with a given number of counts (from
-    "Handbook of CCD Astronomy", Steve Howell, 2000, pg 55).
+    A function to calculate the idealized theoretical signal to noise ratio
+    (SNR) of an astronomical observation with a given number of counts. This
+    expression is taken from "Handbook of CCD Astronomy", Steve Howell, 2000,
+    pg 55).
 
     Parameters
     ----------
@@ -88,7 +89,7 @@ def _get_shotnoise(detector_property):
 
 
 def _t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
-                      readnoise, countrate, npix, n_background):
+                       readnoise, countrate, npix, n_background):
     """
     Returns the full expression for the exposure time including the
     contribution to the noise from the background and the gain.
@@ -122,9 +123,9 @@ def exptime_from_howell_snr(snr, countrate,
                             gain=1 * u.electron / u.adu,
                             ad_err=np.sqrt(0.289) * u.adu / u.pixel):
     """
-    Returns the exposure time needed (in seconds) to achieve the desired
-    signal to noise ratio (from "Handbook of CCD Astronomy", Steve Howell,
-    2000, pg 55).
+    Returns the exposure time needed in units of seconds to achieve
+    the specified (idealized theoretical) signal to noise ratio
+    (from "Handbook of CCD Astronomy", Steve Howell, 2000, pg 55).
 
     Parameters
     ----------
