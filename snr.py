@@ -85,8 +85,8 @@ def get_shotnoise(detector_property):
     return detector_property.value * np.sqrt(1 * u.electron / u.pixel)
 
 
-def t_with_small_errs(t, background, darkcurrent, gain_err, readnoise,
-                      countrate, npix, n_background):
+def t_with_small_errs(t, background_rate, darkcurrent_rate, gain_err,
+                      readnoise, countrate, npix, n_background):
     """
     Returns the full expression for the exposure time including the
     contribution to the noise from the background and the gain.
@@ -94,7 +94,7 @@ def t_with_small_errs(t, background, darkcurrent, gain_err, readnoise,
     if type(t) != 'astropy.units.quantity.Quantity':
         t = t * u.s
 
-    detector_noise = (background * t + darkcurrent * t +
+    detector_noise = (background_rate * t + darkcurrent_rate * t +
                       gain_err ** 2 + readnoise ** 2)
     radicand = countrate * t + (npix * (1 + npix/n_background) *
                                 detector_noise)
@@ -106,16 +106,16 @@ def t_with_small_errs(t, background, darkcurrent, gain_err, readnoise,
                   countrate=u.electron / u.s,
                   npix=u.pixel,
                   n_background=u.pixel,
-                  background=u.electron / u.pixel / u.s,
-                  darkcurrent=u.electron / u.pixel / u.s,
+                  background_rate=u.electron / u.pixel / u.s,
+                  darkcurrent_rate=u.electron / u.pixel / u.s,
                   readnoise=u.electron / u.pixel,
                   gain=u.electron / u.adu,
                   ad_err=u.adu / u.pixel)
 def exposure_time_from_snr(snr, countrate,
                            npix=1 * u.pixel,
                            n_background=np.inf * u.pixel,
-                           background=0 * u.electron / u.pixel / u.s,
-                           darkcurrent=0 * u.electron / u.pixel / u.s,
+                           background_rate=0 * u.electron / u.pixel / u.s,
+                           darkcurrent_rate=0 * u.electron / u.pixel / u.s,
                            readnoise=0 * u.electron / u.pixel,
                            gain=1 * u.electron / u.adu,
                            ad_err=np.sqrt(0.289) * u.adu / u.pixel):
@@ -139,12 +139,12 @@ def exposure_time_from_snr(snr, countrate,
         pixels. Default is set to np.inf * astropy.units.pixel
         such that there is no contribution of error due to background
         estimation. This assumes that n_background will be >> npix.
-    background : `~astropy.units.Quantity`, optional
+    background_rate : `~astropy.units.Quantity`, optional
         Photons per pixel per second due to the backround/sky with units of
         electrons/second/pixel.
         Default is 0 * (astropy.units.electron /
                         astropy.units.second / astropy.units.pixel)
-    darkcurrent : `~astropy.units.Quantity`, optional
+    darkcurrent_rate : `~astropy.units.Quantity`, optional
         Electrons per pixel per second due to the dark current with units
         of electrons/second/pixel.
         Default is 0 * (astropy.units.electron /
@@ -173,14 +173,16 @@ def exposure_time_from_snr(snr, countrate,
 
     # solve t with the quadratic equation (pg. 57 of Howell 2000)
     A = countrate ** 2
-    B = (-1) * snr ** 2 * (countrate + npix * (background + darkcurrent))
+    B = (-1) * snr ** 2 * (countrate + npix * (background_rate +
+                                               darkcurrent_rate))
     C = (-1) * snr ** 2 * npix * readnoise ** 2
 
     t = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
 
     if gain_err.value > 1 or n_background.value != np.inf:
         # solve t numerically
-        t = fsolve(t_with_small_errs, t, args=(background, darkcurrent,
+        t = fsolve(t_with_small_errs, t, args=(background_rate,
+                                               darkcurrent_rate,
                                                gain_err, readnoise, countrate,
                                                npix, n_background))
         if type(t) != 'astropy.units.quantity.Quantity':
@@ -241,15 +243,15 @@ def test_t_exp_numeric():
     countrate = 24013 * u.adu * gain / t
     npix = 1 * u.pixel
     n_background = 200 * u.pixel
-    background = 620 * u.adu / u.pixel * gain / t
-    darkcurrent = 22 * u.electron / u.pixel / u.hr
-    darkcurrent = darkcurrent.to(u.electron / u.pixel / u.s)
+    background_rate = 620 * u.adu / u.pixel * gain / t
+    darkcurrent_rate = 22 * u.electron / u.pixel / u.hr
+    darkcurrent_rate = darkcurrent_rate.to(u.electron / u.pixel / u.s)
     readnoise = 5 * u.electron / u.pixel
 
     result = exposure_time_from_snr(snr, countrate, npix=npix,
                                     n_background=n_background,
-                                    background=background,
-                                    darkcurrent=darkcurrent,
+                                    background_rate=background_rate,
+                                    darkcurrent_rate=darkcurrent_rate,
                                     readnoise=readnoise, gain=gain)
     answer = t
 
@@ -270,8 +272,8 @@ def test_t_exp_analytic():
     readnoise = 1 * u.electron / u.pixel
 
     t = exposure_time_from_snr(snr_set, countrate, npix=npix,
-                               background=background_rate,
-                               darkcurrent=darkcurrent_rate,
+                               background_rate=background_rate,
+                               darkcurrent_rate=darkcurrent_rate,
                                readnoise=readnoise)
 
     # if t is correct, snr() should return snr_set:
