@@ -68,10 +68,10 @@ def howell_snr(counts,
     References
     ----------
     .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
-    Cambridge University Press)
+        Cambridge University Press)
     .. [2] Merline, W. & Howell, S. B. *A Realistic Model for Point-sources
-    Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
-    (1995)
+        Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
+        (1995)
 
     Returns
     -------
@@ -185,10 +185,10 @@ def exptime_from_howell_snr(snr, countrate,
     References
     ----------
     .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
-    Cambridge University Press)
+        Cambridge University Press)
     .. [2] Merline, W. & Howell, S. B. *A Realistic Model for Point-sources
-    Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
-    (1995)
+        Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
+        (1995)
 
     Returns
     -------
@@ -213,15 +213,14 @@ def exptime_from_howell_snr(snr, countrate,
                                                 darkcurrent_rate,
                                                 gain_err, readnoise, countrate,
                                                 npix, n_background))
-        if not hasattr(t, 'unit'):
-            t = t * u.s
+        t = t * u.s
 
     return t
 
 
 def test_howell_snr_calc():
     """
-    A test to check that the math in howell_snr() is done correctly.
+    A test to check that the math in :func:`howell_snr` is done correctly.
     Based on the worked example in "A Handbook to CCD Astronomy",
     Steven Howell, 2000, pg. 56-57
     """
@@ -254,7 +253,7 @@ def test_snr_bright_object():
     result = howell_snr(counts)
     answer = np.sqrt(counts)
 
-    assert_quantity_allclose(result, answer, rtol=1e-7)
+    assert_quantity_allclose(result, answer)
 
 
 def test_t_exp_numeric():
@@ -279,9 +278,8 @@ def test_t_exp_numeric():
                                      background_rate=background_rate,
                                      darkcurrent_rate=darkcurrent_rate,
                                      readnoise=readnoise, gain=gain)
-    answer = t
 
-    assert_quantity_allclose(result, answer, atol=1 * u.s)
+    assert_quantity_allclose(result, t, atol=1 * u.s)
 
 
 def test_t_exp_analytic():
