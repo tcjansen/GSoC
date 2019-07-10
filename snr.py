@@ -25,7 +25,7 @@ def howell_snr(counts,
     """
     A function to calculate the idealized theoretical signal to noise ratio
     (SNR) of an astronomical observation with a given number of counts. This
-    expression is taken from pg 55 in [1]_).
+    expression is taken from pg 55 of [1]_).
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ def howell_snr(counts,
         sqrt(0.289) comes from the assumption that "for a charge level that is
         half way between two output ADU steps, there is an equal chance that it
         will be assigned to the lower or to the higher ADU value when converted
-        to a digital number" (text from footnote on page 56 in [1]_, see also
+        to a digital number" (text from footnote on page 56 of [1]_, see also
         [2]_).
 
     References
@@ -138,7 +138,7 @@ def exptime_from_howell_snr(snr, countrate,
     """
     Returns the exposure time needed in units of seconds to achieve
     the specified (idealized theoretical) signal to noise ratio
-    (from pg 57-58 in [1]_).
+    (from pg 57-58 of [1]_).
 
     Parameters
     ----------
@@ -179,7 +179,7 @@ def exptime_from_howell_snr(snr, countrate,
         sqrt(0.289) comes from the assumption that "for a charge level that is
         half way between two output ADU steps, there is an equal chance that it
         will be assigned to the lower or to the higher ADU value when converted
-        to a digital number" (text from footnote on page 56 in [1]_, see also
+        to a digital number" (text from footnote on page 56 of [1]_, see also
         [2]_).
 
     References
@@ -221,8 +221,12 @@ def exptime_from_howell_snr(snr, countrate,
 def test_howell_snr_calc():
     """
     A test to check that the math in :func:`howell_snr` is done correctly.
-    Based on the worked example in "A Handbook to CCD Astronomy",
-    Steven Howell, 2000, pg. 56-57
+    Based on the worked example on pg. 56-57 of [1]_.
+
+    References
+    ----------
+    .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
+        Cambridge University Press)
     """
     t = 300 * u.s
     readnoise = 5 * u.electron / u.pixel
@@ -246,7 +250,7 @@ def test_howell_snr_calc():
 
 def test_snr_bright_object():
     """
-    Test that howell_snr() returns sqrt(counts), the expected value
+    Test that :func:`howell_snr` returns sqrt(counts), the expected value
     for a bright target.
     """
     counts = 25e5 * u.electron
@@ -258,12 +262,17 @@ def test_snr_bright_object():
 
 def test_t_exp_numeric():
     """
-    A test to check that the numerical method in exptime_from_howell_snr()
-    (i.e. when the error in background noise or gain is non-negligible) is
-    done correctly. Based on the worked example in "A Handbook to
-    CCD Astronomy", Steven Howell, 2000, pg. 56-57
+    A test to check that the numerical method in
+    :func:`exptime_from_howell_snr` (i.e. when the error in background noise or
+    gain is non-negligible) is done correctly. Based on the worked example on
+    pg. 56-57 of [1]_.
+
+    References
+    ----------
+    .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
+        Cambridge University Press)
     """
-    t = 300 * u.s  # answer from Howell 2000
+    t = 300 * u.s
     snr = 342 * np.sqrt(1 * u.electron)
     gain = 5 * u.electron / u.adu
     countrate = 24013 * u.adu * gain / t
@@ -284,8 +293,8 @@ def test_t_exp_numeric():
 
 def test_t_exp_analytic():
     """
-    A test to check that the analytic method in exptime_from_howell_snr() is
-    done correctly.
+    A test to check that the analytic method in :func:`exptime_from_howell_snr`
+    is done correctly.
     """
     snr_set = 50 * np.sqrt(1 * u.electron)
     countrate = 1000 * u.electron / u.s
