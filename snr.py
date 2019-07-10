@@ -3,6 +3,8 @@ import astropy.units as u
 from astropy.tests.helper import assert_quantity_allclose
 from scipy.optimize import fsolve
 
+ad_err_default = np.sqrt(0.289) * u.adu / u.pixel
+
 
 @u.quantity_input(counts=u.electron,
                   npix=u.pixel,
@@ -19,12 +21,11 @@ def howell_snr(counts,
                darkcurrent=0 * u.electron / u.pixel,
                readnoise=0 * u.electron / u.pixel,
                gain=1 * u.electron / u.adu,
-               ad_err=np.sqrt(0.289) * u.adu / u.pixel):
+               ad_err=ad_err_default):
     """
     A function to calculate the idealized theoretical signal to noise ratio
     (SNR) of an astronomical observation with a given number of counts. This
-    expression is taken from "Handbook of CCD Astronomy", Steve Howell, 2000,
-    pg 55).
+    expression is taken from pg 55 in [1]_).
 
     Parameters
     ----------
@@ -57,8 +58,20 @@ def howell_snr(counts,
     ad_err : `~astropy.units.Quantity`, optional
         An estimate of the 1 sigma error within the A/D converter with units of
         adu/pixel. Default is set to
-        sqrt(0.289) * astropy.units.adu / astropy.units.pixel
-        (Merline & Howell, 1995).
+        sqrt(0.289) * astropy.units.adu / astropy.units.pixel, where
+        sqrt(0.289) comes from the assumption that "for a charge level that is
+        half way between two output ADU steps, there is an equal chance that it
+        will be assigned to the lower or to the higher ADU value when converted
+        to a digital number" (text from footnote on page 56 in [1]_, see also
+        [2]_).
+
+    References
+    ----------
+    .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
+    Cambridge University Press)
+    .. [2] Merline, W. & Howell, S. B. *A Realistic Model for Point-sources
+    Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
+    (1995)
 
     Returns
     -------
@@ -121,11 +134,11 @@ def exptime_from_howell_snr(snr, countrate,
                             darkcurrent_rate=0 * u.electron / u.pixel / u.s,
                             readnoise=0 * u.electron / u.pixel,
                             gain=1 * u.electron / u.adu,
-                            ad_err=np.sqrt(0.289) * u.adu / u.pixel):
+                            ad_err=ad_err_default):
     """
     Returns the exposure time needed in units of seconds to achieve
     the specified (idealized theoretical) signal to noise ratio
-    (from "Handbook of CCD Astronomy", Steve Howell, 2000, pg 55).
+    (from pg 57-58 in [1]_).
 
     Parameters
     ----------
@@ -162,8 +175,20 @@ def exptime_from_howell_snr(snr, countrate,
     ad_err : `~astropy.units.Quantity`, optional
         An estimate of the 1 sigma error within the A/D converter with units of
         adu/pixel. Default is set to
-        sqrt(0.289) * astropy.units.adu / astropy.units.pixel
-        (Merline & Howell, 1995).
+        sqrt(0.289) * astropy.units.adu / astropy.units.pixel, where
+        sqrt(0.289) comes from the assumption that "for a charge level that is
+        half way between two output ADU steps, there is an equal chance that it
+        will be assigned to the lower or to the higher ADU value when converted
+        to a digital number" (text from footnote on page 56 in [1]_, see also
+        [2]_).
+
+    References
+    ----------
+    .. [1] Howell, S. B. 2000, *Handbook of CCD Astronomy* (Cambridge, UK:
+    Cambridge University Press)
+    .. [2] Merline, W. & Howell, S. B. *A Realistic Model for Point-sources
+    Imaged on Array Detectors: The Model and Initial Results*. ExA, 6:163
+    (1995)
 
     Returns
     -------
