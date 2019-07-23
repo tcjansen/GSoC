@@ -29,7 +29,7 @@ def from_wave_binwidth(source_spectrum, bandpass, binwidth, waverange=None,
     Returns a spectrum with bins defined by a constant bin width specified
     by the user.
     """
-    if not waverange:
+    if waverange is None:
         waverange = bandpass.waveset
 
     # make sure units are the same before stripping them for np.arange()
