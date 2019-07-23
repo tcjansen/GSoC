@@ -189,8 +189,9 @@ def get_atmospheric_transmittance(airmass=1.0, pwv_mode='pwv', season=0,
             print(e, 'could not retrieve FITS data from server')
     else:
         raise SkyCalcError('HTML request failed. A custom parameter you ' +
-                             'set is most likely not accepted by the SkyCalc' +
-                             ' Calculator. json.loads() returns: {}'.format(results))
+                           'set is most likely not accepted by the SkyCalc' +
+                           ' Calculator. json.loads() returns:' +
+                           ' {}'.format(results))
 
     # Create a temporary file to write the binary results to
     tmp_data_file = './tmp_skycalc_data.fits'
